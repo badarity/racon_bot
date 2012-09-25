@@ -42,7 +42,8 @@ get_gid(Host, Port) ->
 
 ws_connect(Host, Port, Gid, Uid) ->
     Path = ws_path(Gid, Uid),
-    racon_bot_ws_client:start_link(Host, Port, Path).
+    {ok, Pid} = racon_bot_ws_client:start_link(Host, Port, Path),
+    Pid.
 
 ws_path(Gid, undefined) ->
     "/game/" ++ integer_to_list(Gid);
