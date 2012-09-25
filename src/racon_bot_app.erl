@@ -1,4 +1,4 @@
--module(racon_app).
+-module(racon_bot_app).
 -author("Nikita Lebedev <nlebedev@reksoft.ru>").
 
 -behaviour(application).
