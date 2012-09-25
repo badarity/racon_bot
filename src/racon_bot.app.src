@@ -1,0 +1,9 @@
+%% -*- erlang -*-
+{application, racon_bot,
+ [{description, "racon_bot"},
+  {vsn, "0.1"},
+  {modules, []},
+  {registered, []},
+  {mod, {'racon_bot_app', []}},
+  {env, []},
+  {applications, [kernel, stdlib, crypto]}]}.
