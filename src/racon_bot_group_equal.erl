@@ -8,4 +8,4 @@ start(Bots, Module, Args) ->
     spawn(fun() -> bot_starer(Bots, Module, Args) end).
 
 bot_starer(Bots, Module, Args) ->
-    [ apply(Module,start_link,Args) || _N <- lists:seq(1, Bots) ].
+    [ apply(Module,start,Args) || _N <- lists:seq(1, Bots) ].
