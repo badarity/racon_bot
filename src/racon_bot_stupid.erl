@@ -5,6 +5,8 @@
 -export([start/3, start/4, start_link/3]).
 -export([init/3, field_update/3]).
 
+-include("priv/include/delays.hrl").
+
 start_link(Host, Port, Mod) ->
     racon_bot:start_link(?MODULE, Host, Port, {Mod, self()}).
 
@@ -41,5 +43,5 @@ step(_Pos, Direction) ->
 
 
 move(Direction) ->
-    receive nothing -> ok after 150 -> ok end,
+    receive nothing -> ok after ?MOVE_DELAY -> ok end,
     Direction.

@@ -1,0 +1,2 @@
+-define(STARTUP_DELAY, ?MOVE_DELAY*3).
+-define(MOVE_DELAY, 200).

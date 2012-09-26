@@ -4,7 +4,7 @@
 
 -export([start/3, connected/2]).
 
--define(STARTUP_TIMEOUT, 400).
+-include("priv/include/delays.hrl").
 
 start(Bots, Module, Args) ->
     spawn(fun() -> bot_starer(Bots, Module, Args) end).
@@ -21,5 +21,5 @@ bot_starer(Bots, Module, Args) ->
 
     
 start_bot(Module, Args) ->
-    receive nothing -> ok after ?STARTUP_TIMEOUT -> ok end,
+    receive nothing -> ok after ?STARTUP_DELAY -> ok end,
     apply(Module,start,Args ++ [?MODULE]).
