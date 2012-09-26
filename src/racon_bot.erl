@@ -2,18 +2,21 @@
 -module(racon_bot).
 -behaviour(gen_server).
 
--export([start/3, start_link/3, gamestate/3, gameinit/3]).
+-export([start/4, start/5, start_link/4, gamestate/3, gameinit/3]).
 -export([behaviour_info/1]).
 -export([init/1, terminate/2, handle_cast/2, handle_info/2]).
 
 -record(state, {uid = undefined, ws, host, port, gid,%% own
-                module, state }). %% behaviour
+                module, state, initialized = false, args }). %% behaviour
 
-start_link(Module, Host, Port) ->
-    gen_server:start_link(?MODULE, {Module, Host, Port, undefined}, []).
+start_link(Module, Host, Port, Args) ->
+    gen_server:start_link(?MODULE, {Module, Host, Port, undefined, Args}, []).
 
-start(Module, Host, Port) ->
-    gen_server:start(?MODULE, {Module, Host, Port, undefined}, []).
+start(Module, Host, Port, Args) ->
+    gen_server:start(?MODULE, {Module, Host, Port, undefined, Args}, []).
+
+start(Module, Host, Port, Gid, Args) ->
+    gen_server:start(?MODULE, {Module, Host, Port, Gid, Args}, []).
 
 
 gamestate(Pid, SelfPos, EnemiesPos) ->
@@ -23,30 +26,33 @@ gameinit(Pid, Gid, Uid) ->
     gen_server:cast(Pid, {gameinit, Gid, Uid}).
 
 behaviour_info(callbacks) ->
-    [{init,0},{field_update,3}].
+    [{init,3},{field_update,3}].
 
-init({Module, Host, Port, Gid}) ->
+init({Module, Host, Port, Gid, Args}) ->
     process_flag(trap_exit, true),
     WsConn = ws_connect(Host, Port, Gid, undefined),
-    {ok, State} = Module:init(),
     {ok, #state{ws = WsConn, host = Host, port = Port,
-                module = Module, state = State}}.
+                module = Module, args = Args}}.
 
-handle_cast({gamestate, Self, Enemies}, #state{module = Module} = State) ->
-    {noreply, field_update(Module:field_update(Self, Enemies, State), State)};
+handle_cast({gamestate, Self, Enemies}, #state{module = Module,
+                                               state = CState} = State) ->
+    field_update(Module:field_update(Self, Enemies, CState), State);
 
 handle_cast({gameinit, Gid, Uid}, State) ->
-    io:format("self:~p~n", [self()]),
-    {noreply, State#state{gid = Gid, uid = Uid}}.
-
+    {noreply, callback_init(State#state{gid = Gid, uid = Uid})}.
 
 handle_info({'EXIT', Pid, _Reason},
             #state{ws = Pid, host = Host, port = Port,
                    gid = Gid, uid = Uid} = State) ->
     {noreply, State#state{ws = ws_connect(Host, Port, Gid, Uid)}}.
 
+callback_init(#state{initialized = true} = State) ->
+    State;
+callback_init(#state{gid = Gid, uid = Uid, module = Module, args = Args} = State) ->
+    {ok, CState} = Module:init(Gid, Uid, Args),
+    State#state{state = CState, initialized = true}.
+
 terminate(_Reason, _State) ->
-    io:format("reason:~p~n~p~n", [_Reason, _State]),
     ok.
 
 ws_connect(Host, Port, Gid, Uid) ->
@@ -58,18 +64,19 @@ ws_path(undefined, undefined) ->
     "/game";
 ws_path(Gid, undefined) ->
     ws_path(undefined, undefined) ++
-        "?guid=" ++ Gid;
+        "?GUID=" ++ Gid;
 ws_path(Gid, Uid) ->
     ws_path(Gid, undefined) ++ "uuid=" ++ Uid.
 
+field_update({stop, ClientState}, State) ->
+    {stop, normal, State#state{state = ClientState}};
+
 field_update({ok, stay, ClientState}, State) ->
-    State#state{state = ClientState};
+    {noreply, State#state{state = ClientState}};
 
 field_update({ok, Direction, ClientState}, State) ->
     move(Direction, State),
-    State#state{state = ClientState}.
+    {noreply, State#state{state = ClientState}}.
 
 move(Direction, #state{ws = WsConn}) ->
     racon_bot_ws_client:move(WsConn, Direction).
-                                                         
-

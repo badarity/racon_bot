@@ -44,7 +44,7 @@ msg_type({struct, Props}) ->
 parse_by_type(initial, {struct, Props}) ->
     Gid = proplists:get_value(<<"guid">>, Props),
     Uid = proplists:get_value(<<"uuid">>, Props),
-    {initial, Gid, Uid};
+    {initial, binary_to_list(Gid), binary_to_list(Uid)};
 
 parse_by_type(gamestate, {struct, Props}) ->
     Self = parse_self_state(proplists:get_value(<<"self">>, Props)),
@@ -57,7 +57,6 @@ parse_self_state([X, Y]) ->
     {X, Y}.
 
 handle_msg({initial, Gid, Uid}, BotPid) ->
-    io:format("calling:~p~n", [BotPid]),
     racon_bot:gameinit(BotPid, Gid, Uid),
     {ok, BotPid};
 
