@@ -1,11 +1,14 @@
 -module(racon_bot_ws_client).
 
 -behaviour(websocket_client).
--export([start_link/3, move/2]).
+-export([start_link/3, move/2, stop/1]).
 -export([init/1, ws_onopen/1, ws_onmessage/2, ws_oninfo/2, ws_onclose/1]).
 
 start_link(Host, Port, Path) ->
     websocket_client:start(Host, Port, Path, ?MODULE, self()).
+
+stop(Pid) ->
+    websocket_client:close(Pid).
 
 move(Pid, Direction) ->
     Pid ! {move, Direction}.

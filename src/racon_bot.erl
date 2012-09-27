@@ -52,7 +52,8 @@ callback_init(#state{gid = Gid, uid = Uid, module = Module, args = Args} = State
     {ok, CState} = Module:init(Gid, Uid, Args),
     State#state{state = CState, initialized = true}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{ws = WsConn}) ->
+    racon_bot_ws_client:stop(WsConn),
     ok.
 
 ws_connect(Host, Port, Gid, Uid) ->
