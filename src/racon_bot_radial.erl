@@ -46,9 +46,12 @@ step(#state{track = [Move | NextMoves], walked = Walked} = S) ->
 %% create_track(start_pos, field_size)
 create_track(Start, FieldSize) ->
     Rad = choose_radius(FieldSize),
-    {TrackToCircle, Circle} = cycle_track(Start, Rad, FieldSize),
+    {TrackToCircle, Circle} = cycle_track(Start, Rad, field_center(FieldSize)),
     {track_to_moves(Start, TrackToCircle),
      track_to_moves(lists:last([Start | TrackToCircle]), Circle) }.
+
+field_center({W, H}) ->
+    {W div 2, H div 2}.
 
 track_to_moves(Start, Track) ->
     track_to_moves(Start, Track, []).
@@ -78,6 +81,7 @@ choose_radius({H, W}) ->
     random:uniform(lists:min([H div 2,W div 2]) - MinRad + 1) + MinRad - 1.
 
 cycle_track(Start, Rad, Center) ->
+    io:format("rad: ~p~n", [Rad]),
     cycle_track(Start, [], Rad, Center).
 
 cycle_track({Px, Py} = Prev, Track, Rad, Center) ->
@@ -90,7 +94,9 @@ add_track_point(Point, Track, Rad, Center) ->
     split_or_walk(lists:member(Point, Track), Point, Track, Rad, Center).
 
 split_or_walk(true, Point, Track, _Rad, _Center) ->
-    {_Tail, _Circle} = lists:splitwith(fun(TP) -> TP =/= Point end, lists:reverse(Track));
+    {_Tail, _Circle} = lists:splitwith(fun(TP) -> TP =/= Point end, lists:reverse(Track)),
+    io:format("~w~n~w~n", [_Tail,_Circle]),
+    {_Tail, _Circle};
 split_or_walk(false, Point, Track, Rad, Center) ->
     cycle_track(Point, [Point | Track], Rad, Center).
 
