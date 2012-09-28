@@ -10,6 +10,7 @@
                 walked = [], prev_pos = undefined}).
 
 -include("priv/include/delays.hrl").
+-compile([export_all]).
 
 start(Host, Port, Mod) ->
     racon_bot:start(?MODULE, Host, Port, {Mod, self()}).
@@ -66,11 +67,41 @@ circle_points(Rad, {W, H}) ->
     cycle_track({Cx, Cy - Rad}, Rad, Center).
 
 cycle_track(Start, Rad, Center) ->
-    cycle_track(Start, Start, Rad, Center).
+    cycle_track(Start, Start, [], Rad, Center).
 
-cycle_track(Start, {Px, Py} = Previous, _Rad, _Center) ->
+cycle_track(Start, {Px, Py} = Prev, Track, Rad, Center) ->
     D = [-1,0,1],
-    Points = [ {Px + Dx, Py + Dy} || Dx <- D, Dy <- D, Dx * Dy == 0 ].
+    Moves = clockwise_moves([ {Dx, Dy} || Dx <- D, Dy <- D, abs(Dx + Dy) == 1 ], Prev, Center),
+    Ps = [ {Mx+Px, My+Py} || {Mx, My} <- Moves ],
+    add_track_point(Start, precisest_point(Ps, Rad, Center), Track, Rad, Center).
+
+add_track_point(Start, Start, Track, _Rad, _Center) ->
+    lists:reverse(Track);
+add_track_point(Start, Point, Track, Rad, Center) ->
+    cycle_track(Start, Point, [Point | Track], Rad, Center).
+
+
+clockwise_moves(Moves, {Sx,Sy}, {Cx, Cy}) ->
+    [ {Mx, My} || {Mx, My} <- Moves, Mx * (Sy - Cy) >= 0, My * (Sx - Cx) =< 0].
+
+precisest_point(Points, RealRad, {Cx, Cy}) ->
+    Rad = fun({X, Y}) -> (X - Cx) * (X - Cx) + (Y - Cy) * (Y - Cy) end,
+    Folder =
+	fun({Measure, P}, {Min, MinP}) ->
+	   case mabs(Measure) < mabs(Min) of
+	       true -> {Measure, P};
+	       _ -> {Min, MinP}
+	   end
+	end,
+    {_, PP} = lists:foldl(Folder, {false,undefined},
+			  [ { RealRad*RealRad - Rad(P), P} || P <- Points ]),
+    io:format("~p~n", [PP]),
+    PP.
+
+mabs(false) ->
+    false;
+mabs(Number) ->
+    abs(Number).
 
 track_to_point(From, To) ->
     [up,down].
