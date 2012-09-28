@@ -3,26 +3,28 @@
 
 -behaviour(racon_bot).
 
--export([start/3, start/4]).
+-export([start_link/3, start_link/4]).
 -export([init/3, field_update/3]).
 
 -record(state, {start_track = [], track = [],
-                walked = [], prev_pos = undefined}).
+                walked = [], prev_pos = undefined,
+                timer, leader}).
+-record(timer, {last_check, last_diff}).
 
 -include("priv/include/delays.hrl").
--compile([export_all]).
 
-start(Host, Port, Mod) ->
-    racon_bot:start(?MODULE, Host, Port, {Mod, self()}).
+start_link(Host, Port, Mod) ->
+    racon_bot:start_link(?MODULE, Host, Port, {Mod, self()}).
 
-start(Host, Port, Gid, Mod) ->
-    racon_bot:start(?MODULE, Host, Port, Gid, {Mod, self()}).
+start_link(Host, Port, Gid, Mod) ->
+    racon_bot:start_link(?MODULE, Host, Port, Gid, {Mod, self()}).
 
 init(Gid, Uid, {GroupMod, Group}) ->
     GroupMod:connected(Group, Gid),
-    {ok, #state{}}.
+    {ok, #state{leader = Group, timer = #timer{}}}.
 
-field_update(dead, _Enemies, State) ->
+field_update(dead, _Enemies, #state{leader = Leader} = State) ->
+    racon_bot_group_equal:moved(Leader),
     {stop, State};
 %% initial position
 field_update(Pos, _Enemies, #state{track = [], walked = []} = State) ->
@@ -32,16 +34,18 @@ field_update(Pos, _Enemies, #state{track = [], walked = []} = State) ->
                      track = RadialTrack, prev_pos = Pos});
 field_update(Pos, _Enemies, #state{prev_pos = Pos} = State) ->
     {ok, stay, State};
-field_update(Pos, _Enemies, State) ->
+field_update(Pos, _Enemies, #state{leader = Leader} = State) ->
     step(State#state{prev_pos = Pos}).
 
 step(#state{start_track = [Move | Rest]} = S) ->
     {ok, Move, S#state{start_track = Rest}};
-step(#state{track = [], walked = Walked}) ->
-    step(#state{track = lists:reverse(Walked), walked = []});
+step(#state{track = [], walked = Walked} = State) ->
+    step(State#state{track = lists:reverse(Walked), walked = []});
 step(#state{track = [Move | NextMoves], walked = Walked} = S) ->
+    TimerStop = move_timer_stop(S),
     move_delay(),
-    {ok, Move, S#state{track = NextMoves, walked = [Move | Walked]}}.
+    TimerStart = move_timer_start(TimerStop),
+    {ok, Move, TimerStart#state{track = NextMoves, walked = [Move | Walked]}}.
 
 %% create_track(start_pos, field_size)
 create_track(Start, FieldSize) ->
@@ -121,7 +125,19 @@ mabs(false) ->
 mabs(Number) ->
     abs(Number).
 
-track_to_point(From, To) ->
-    [up,down].
-    
+move_timer_stop(#state{timer = #timer{last_check = undefined}} = State) ->
+    racon_bot_group_equal:moved(State#state.leader), %% hack
+    State;
+move_timer_stop(#state{timer = #timer{last_check = Last}} = State) ->
+    Now = now(),
+    Diff = timer:now_diff(Now, Last),
+    report_if_enormous(Diff, State#state.leader),
+    State#state{timer = #timer{last_check = Now, last_diff = Diff}}.
 
+move_timer_start(#state{timer = Timer} = State) ->
+    State#state{timer = Timer#timer{last_check = now()}}.
+
+report_if_enormous(N, Leader) when N > 100 * 1000 ->
+    io:format("the lag is ~p microseconds~n", [N]);
+report_if_enormous(_N, _Leader) ->
+    ok.

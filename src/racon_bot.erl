@@ -2,7 +2,7 @@
 -module(racon_bot).
 -behaviour(gen_server).
 
--export([start/4, start/5, start_link/4, gamestate/3, gameinit/3]).
+-export([start/4, start/5, start_link/4, start_link/5, gamestate/3, gameinit/3]).
 -export([behaviour_info/1]).
 -export([init/1, terminate/2, handle_cast/2, handle_info/2]).
 
@@ -11,6 +11,9 @@
 
 start_link(Module, Host, Port, Args) ->
     gen_server:start_link(?MODULE, {Module, Host, Port, undefined, Args}, []).
+
+start_link(Module, Host, Port, Gid, Args) ->
+    gen_server:start_link(?MODULE, {Module, Host, Port, Gid, Args}, []).
 
 start(Module, Host, Port, Args) ->
     gen_server:start(?MODULE, {Module, Host, Port, undefined, Args}, []).
@@ -67,7 +70,7 @@ ws_path(Gid, undefined) ->
     ws_path(undefined, undefined) ++
         "?GUID=" ++ http_uri:encode(Gid);
 ws_path(Gid, Uid) ->
-    ws_path(Gid, undefined) ++ "uuid=" ++ http_uri:encode(Uid).
+    ws_path(Gid, undefined) ++ "&uuid=" ++ http_uri:encode(Uid).
 
 field_update({stop, ClientState}, State) ->
     {stop, normal, State#state{state = ClientState}};
