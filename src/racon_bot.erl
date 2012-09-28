@@ -53,7 +53,6 @@ callback_init(#state{gid = Gid, uid = Uid, module = Module, args = Args} = State
     State#state{state = CState, initialized = true}.
 
 terminate(Reason, #state{ws = WsConn}) ->
-    io:format("Bot is terminating. Reason: ~p~n", [Reason]),
     racon_bot_ws_client:stop(WsConn),
     ok.
 
