@@ -46,39 +46,53 @@ step(#state{track = [Move | NextMoves], walked = Walked} = S) ->
 %% create_track(start_pos, field_size)
 create_track(Start, FieldSize) ->
     Rad = choose_radius(FieldSize),
-    {track_to_circle(Start, Rad, FieldSize), [up,left,down,right]}.
+    {TrackToCircle, Circle} = cycle_track(Start, Rad, FieldSize),
+    {track_to_moves(Start, TrackToCircle),
+     track_to_moves(lists:last([Start | TrackToCircle]), Circle) }.
+
+track_to_moves(Start, Track) ->
+    track_to_moves(Start, Track, []).
+
+track_to_moves(_Prev, [], Moves) ->
+    lists:reverse(Moves);
+track_to_moves(Prev, [Next | Track], Moves) ->
+    track_to_moves(Next, Track, [pair_to_move(Prev, Next) | Moves]).
+
+pair_to_move({Fx, Fy}, {Tx, Ty}) ->
+    diff_to_move(Tx - Fx, Ty - Fy).
+
+diff_to_move(-1, 0) ->
+    left;
+diff_to_move(1, 0) ->
+    right;
+diff_to_move(0, -1) ->
+    down;
+diff_to_move(0, 1) ->
+    up.
 
 move_delay() ->
     receive nothing -> ok after ?MOVE_DELAY -> ok end.
 
 choose_radius({H, W}) ->
     MinRad = 2,
-    randim:uniform(lists:min([H div 2,W div 2]) - MinRad + 1) + MinRad - 1.
-
-track_to_circle(Start, Rad, FieldSize) ->
-    track_to_point(Start, point_on_circle(Rad, FieldSize)).
-
-point_on_circle(Rad, FieldSize) ->
-    Points = circle_points(Rad, FieldSize),
-    lists:nth(random:uniform(length(Points)), Points).
-
-circle_points(Rad, {W, H}) ->
-    {Cx, Cy}= Center = {W div 2, H div 2},
-    cycle_track({Cx, Cy - Rad}, Rad, Center).
+    random:uniform(lists:min([H div 2,W div 2]) - MinRad + 1) + MinRad - 1.
 
 cycle_track(Start, Rad, Center) ->
-    cycle_track(Start, Start, [], Rad, Center).
+    cycle_track(Start, [], Rad, Center).
 
-cycle_track(Start, {Px, Py} = Prev, Track, Rad, Center) ->
+cycle_track({Px, Py} = Prev, Track, Rad, Center) ->
     D = [-1,0,1],
     Moves = clockwise_moves([ {Dx, Dy} || Dx <- D, Dy <- D, abs(Dx + Dy) == 1 ], Prev, Center),
     Ps = [ {Mx+Px, My+Py} || {Mx, My} <- Moves ],
-    add_track_point(Start, precisest_point(Ps, Rad, Center), Track, Rad, Center).
+    add_track_point(precisest_point(Ps, Rad, Center), Track, Rad, Center).
 
-add_track_point(Start, Start, Track, _Rad, _Center) ->
-    lists:reverse(Track);
-add_track_point(Start, Point, Track, Rad, Center) ->
-    cycle_track(Start, Point, [Point | Track], Rad, Center).
+add_track_point(Point, Track, Rad, Center) ->
+    split_or_walk(lists:member(Point, Track), Point, Track, Rad, Center).
+
+split_or_walk(true, Point, Track, _Rad, _Center) ->
+    {_Tail, _Circle} = lists:splitwith(fun(TP) -> TP =/= Point end, lists:reverse(Track));
+split_or_walk(false, Point, Track, Rad, Center) ->
+    cycle_track(Point, [Point | Track], Rad, Center).
 
 
 clockwise_moves(Moves, {Sx,Sy}, {Cx, Cy}) ->
@@ -95,7 +109,6 @@ precisest_point(Points, RealRad, {Cx, Cy}) ->
 	end,
     {_, PP} = lists:foldl(Folder, {false,undefined},
 			  [ { RealRad*RealRad - Rad(P), P} || P <- Points ]),
-    io:format("~p~n", [PP]),
     PP.
 
 mabs(false) ->
