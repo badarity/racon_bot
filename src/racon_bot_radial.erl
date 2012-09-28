@@ -81,7 +81,6 @@ choose_radius({H, W}) ->
     random:uniform(lists:min([H div 2,W div 2]) - MinRad) + MinRad - 1.
 
 cycle_track(Start, Rad, Center) ->
-    io:format("rad: ~p~n", [Rad]),
     cycle_track(Start, [], Rad, Center).
 
 cycle_track({Px, Py} = Prev, Track, Rad, Center) ->
@@ -95,8 +94,6 @@ add_track_point(Point, Track, Rad, Center) ->
 
 split_or_walk(true, Point, Track, _Rad, _Center) ->
     {_Tail, _Circle} = lists:splitwith(fun(TP) -> TP =/= Point end, lists:reverse(Track)),
-    io:format("~w~n~w~n", [_Tail,_Circle]),
-    {_Tail, _Circle};
 split_or_walk(false, Point, Track, Rad, Center) ->
     cycle_track(Point, [Point | Track], Rad, Center).
 
