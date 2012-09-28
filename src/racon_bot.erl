@@ -52,7 +52,8 @@ callback_init(#state{gid = Gid, uid = Uid, module = Module, args = Args} = State
     {ok, CState} = Module:init(Gid, Uid, Args),
     State#state{state = CState, initialized = true}.
 
-terminate(_Reason, #state{ws = WsConn}) ->
+terminate(Reason, #state{ws = WsConn}) ->
+    io:format("Bot is terminating. Reason: ~p~n", [Reason]),
     racon_bot_ws_client:stop(WsConn),
     ok.
 
@@ -65,9 +66,9 @@ ws_path(undefined, undefined) ->
     "/game";
 ws_path(Gid, undefined) ->
     ws_path(undefined, undefined) ++
-        "?GUID=" ++ Gid;
+        "?GUID=" ++ http_uri:encode(Gid);
 ws_path(Gid, Uid) ->
-    ws_path(Gid, undefined) ++ "uuid=" ++ Uid.
+    ws_path(Gid, undefined) ++ "uuid=" ++ http_uri:encode(Uid).
 
 field_update({stop, ClientState}, State) ->
     {stop, normal, State#state{state = ClientState}};
