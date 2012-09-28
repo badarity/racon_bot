@@ -78,7 +78,7 @@ move_delay() ->
 
 choose_radius({H, W}) ->
     MinRad = 2,
-    random:uniform(lists:min([H div 2,W div 2]) - MinRad + 1) + MinRad - 1.
+    random:uniform(lists:min([H div 2,W div 2]) - MinRad) + MinRad - 1.
 
 cycle_track(Start, Rad, Center) ->
     io:format("rad: ~p~n", [Rad]),
